@@ -52,16 +52,17 @@ if cliente_id:
         with st.expander("Formulario de creación de usuario", expanded=True):
             # Mapping de roles para cumplir el CHECK constraint
             rol_opciones_ui = {
-                "Administrador": "Administrador",
-                "Gerente": "Gerente",
-                "Usuario": "Usuario"
+                "Superadmin": "superadmin",
+                "Administrador Cliente": "admin_cliente",
+                "Analista": "analista",
+                "Visor": "visor"
             }
 
             with st.form("crear_usuario_form"):
                 email = st.text_input("Correo electrónico")
                 nombre_usuario = st.text_input("Nombre del usuario")
                 rol_seleccionado = st.selectbox("Rol", list(rol_opciones_ui.keys()))
-                rol = rol_opciones_ui[rol_seleccionado]  # valor que se guardará en la tabla
+                rol = rol_opciones_ui[rol_seleccionado]  # valor exacto que se guardará en la tabla
                 estatus = st.checkbox("Activo", value=True)
                 submit = st.form_submit_button("Crear usuario")
 
