@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.supabase_client import init_supabase
-from utils.excel_loader import load_excel
+# from utils.excel_loader import load_excel
 
 st.title("🏢 Entidades Legales")
 
