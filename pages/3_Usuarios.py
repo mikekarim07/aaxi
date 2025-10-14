@@ -109,6 +109,18 @@ if cliente_id:
                             with st.expander(f"Usuarios del cliente: {cliente_seleccionado}", expanded=True):
                                 st.dataframe(usuarios_cliente.data)
 
+                            # -----------------------------
+                            # Botón para generar enlace de restablecimiento de password
+                            # -----------------------------
+                            if st.button(f"Enviar enlace de restablecimiento de password a {email}"):
+                                try:
+                                    reset_response = supabase.auth.admin.reset_user_password(
+                                        auth_user.id
+                                    )
+                                    st.success(f"✅ Enlace de restablecimiento enviado a {email}")
+                                except Exception as e:
+                                    st.error(f"❌ Error al enviar enlace de restablecimiento: {e}")
+
                         else:
                             st.error("❌ No se pudo crear el usuario en Supabase Auth.")
 
@@ -119,3 +131,4 @@ if cliente_id:
 
 else:
     st.info("Selecciona un cliente para ver sus usuarios.")
+
