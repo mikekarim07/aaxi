@@ -66,6 +66,29 @@ if cliente_id:
                         st.error("❌ Ya existe un usuario con este correo en la tabla interna.")
                     else:
                         # Validación 2: correo en Auth
+
+                        auth_users = supabase.auth.admin.list_users()  # ahora devuelve lista directamente
+                        if any(u.email == email for u in auth_users):
+                            st.error("❌ Ya existe un usuario con este correo en Supabase Auth.")
+                        else:
+                            # Crear usuario en Auth
+                            auth_response = supabase.auth.admin.create_user(
+                                {
+                                    "email": email,
+                                    "email_confirm": True,
+                                    "user_metadata": {
+                                        "nombre_usuario": nombre_usuario,
+                                        "rol": rol,
+                                        "cliente_id": cliente_id,
+                                    },
+                                }
+                            )
+                            auth_user = auth_response.user
+
+                        
+                        
+                        
+                        
                         auth_users = supabase.auth.admin.list_users()  # devuelve una lista directamente
                         if any(u.email == email for u in auth_users):  # no usamos .data
                             st.error("❌ Ya existe un usuario con este correo en Supabase Auth.")
