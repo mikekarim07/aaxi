@@ -6,65 +6,89 @@ st.title("👤 Gestión de Usuarios")
 
 supabase = init_supabase()
 
-# Paso 1. Seleccionar cliente
+# Paso 1. Obtener lista de clientes
 clientes = supabase.table("clientes").select("id, nombre_cliente").execute()
 clientes_data = clientes.data or []
 
-cliente_options = {c["nombre_cliente"]: c["id"] for c in clientes_data}
-cliente_nombre = st.selectbox("Selecciona el cliente", list(cliente_options.keys())) if cliente_options else None
-cliente_id = cliente_options[cliente_nombre] if cliente_nombre else None
+# Dropdown con placeholder
+cliente_nombres = ["Seleccionar Cliente"] + [c["nombre_cliente"] for c in clientes_data]
+cliente_seleccionado = st.selectbox("Selecciona un cliente", cliente_nombres)
+
+# Obtener el cliente_id
+cliente_id = None
+if cliente_seleccionado != "Seleccionar Cliente":
+    cliente = next((c for c in clientes_data if c["nombre_cliente"] == cliente_seleccionado), None)
+    if cliente:
+        cliente_id = cliente["id"]
 
 st.divider()
 
-# Paso 2. Capturar datos del nuevo usuario
-with st.form("crear_usuario_form"):
-    email = st.text_input("Correo electrónico")
-    nombre_usuario = st.text_input("Nombre del usuario")
-    rol = st.selectbox("Rol", ["Administrador", "Gerente", "Usuario"])
-    estatus = st.checkbox("Activo", value=True)
-    submit = st.form_submit_button("Crear usuario")
+# Paso 2. Mostrar formulario SOLO si hay cliente seleccionado
+if cliente_id:
+    st.subheader(f"Creación de usuario para el cliente: {cliente_seleccionado}")
 
-if submit:
-    if not cliente_id:
-        st.error("Debes seleccionar un cliente antes de crear un usuario.")
-    elif not email or not nombre_usuario:
-        st.error("El nombre y el correo son obligatorios.")
-    else:
-        try:
-            # Paso 3. Crear usuario en Auth
-            auth_response = supabase.auth.admin.create_user(
-                {
-                    "email": email,
-                    "email_confirm": True,  # Marca el email como confirmado
-                    "user_metadata": {"nombre_usuario": nombre_usuario, "rol": rol},
-                }
-            )
-            auth_user = auth_response.user
+    with st.form("crear_usuario_form"):
+        email = st.text_input("Correo electrónico")
+        nombre_usuario = st.text_input("Nombre del usuario")
+        rol = st.selectbox("Rol", ["Administrador", "Gerente", "Usuario"])
+        estatus = st.checkbox("Activo", value=True)
+        submit = st.form_submit_button("Crear usuario")
 
-            if auth_user:
-                # Paso 4. Crear registro en la tabla usuarios
-                usuario_data = {
-                    "email": email,
-                    "nombre_usuario": nombre_usuario,
-                    "rol": rol,
-                    "estatus": estatus,
-                    "cliente_id": cliente_id,
-                    "auth_id": auth_user.id,
-                }
+    if submit:
+        if not email or not nombre_usuario:
+            st.error("El nombre y el correo son obligatorios.")
+        else:
+            try:
+                # Validación 1: Verificar si el correo ya existe en la tabla usuarios
+                existing_user = supabase.table("usuarios").select("*").eq("email", email).execute()
+                if existing_user.data:
+                    st.error("❌ Ya existe un usuario con este correo en la tabla interna.")
+                else:
+                    # Validación 2: Verificar si el correo ya existe en Auth
+                    auth_users = supabase.auth.admin.list_users()
+                    if any(u.email == email for u in auth_users.data):
+                        st.error("❌ Ya existe un usuario con este correo en Supabase Auth.")
+                    else:
+                        # Crear usuario en Auth
+                        auth_response = supabase.auth.admin.create_user(
+                            {
+                                "email": email,
+                                "email_confirm": True,
+                                "user_metadata": {
+                                    "nombre_usuario": nombre_usuario,
+                                    "rol": rol,
+                                    "cliente_id": cliente_id,
+                                },
+                            }
+                        )
+                        auth_user = auth_response.user
 
-                supabase.table("usuarios").insert(usuario_data).execute()
+                        if auth_user:
+                            # Insertar en tabla usuarios
+                            usuario_data = {
+                                "email": email,
+                                "nombre_usuario": nombre_usuario,
+                                "rol": rol,
+                                "estatus": estatus,
+                                "cliente_id": cliente_id,
+                                "auth_id": auth_user.id,
+                            }
+                            supabase.table("usuarios").insert(usuario_data).execute()
+                            st.success(f"✅ Usuario '{nombre_usuario}' creado exitosamente.")
+                        else:
+                            st.error("❌ No se pudo crear el usuario en Supabase Auth.")
 
-                st.success(f"✅ Usuario '{nombre_usuario}' creado exitosamente.")
-            else:
-                st.error("❌ No se pudo crear el usuario en Supabase Auth.")
+            except APIError as e:
+                st.error(f"Error en la base de datos: {e}")
+            except Exception as e:
+                st.error(f"Ocurrió un error: {e}")
 
-        except APIError as e:
-            st.error(f"Error en la base de datos: {e}")
-        except Exception as e:
-            st.error(f"Ocurrió un error: {e}")
+else:
+    st.info("Selecciona un cliente para habilitar el formulario de creación de usuario.")
 
 st.divider()
 
-# Paso 5. Mostrar lista de usuarios existentes
+# Mostrar todos los usuarios registrados
+st.subheader("Usuarios registrados")
 usuarios = supabase.table("usuarios").select("*").execute()
 st.dataframe(usuarios.data)
