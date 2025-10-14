@@ -51,10 +51,18 @@ if cliente_id:
     if st.session_state["agregar_usuario"]:
         st.subheader("Formulario de creación de usuario")
 
+        # Mapping de roles para cumplir el CHECK constraint
+        rol_opciones_ui = {
+            "Administrador": "Admin",
+            "Gerente": "Gerente",
+            "Usuario": "Usuario"
+        }
+
         with st.form("crear_usuario_form"):
             email = st.text_input("Correo electrónico")
             nombre_usuario = st.text_input("Nombre del usuario")
-            rol = st.selectbox("Rol", ["Administrador", "Gerente", "Usuario"])
+            rol_seleccionado = st.selectbox("Rol", list(rol_opciones_ui.keys()))
+            rol = rol_opciones_ui[rol_seleccionado]  # valor que se guardará en la tabla
             estatus = st.checkbox("Activo", value=True)
             submit = st.form_submit_button("Crear usuario")
 
@@ -64,24 +72,25 @@ if cliente_id:
             else:
                 try:
                     # -----------------------------
-                    # Paso 4a: Crear usuario en Auth
+                    # Crear usuario en Auth
                     # -----------------------------
                     auth_response = supabase.auth.admin.create_user(
                         {
                             "email": email,
+                            "password": "temporal123!",  # password temporal
                             "email_confirm": True,
                             "user_metadata": {
                                 "nombre_usuario": nombre_usuario,
                                 "rol": rol,
                                 "cliente_id": cliente_id,
-                            },
+                            }
                         }
                     )
                     auth_user = auth_response.user
 
                     if auth_user:
                         # -----------------------------
-                        # Paso 4b: Insertar en tabla usuarios
+                        # Insertar usuario en tabla interna
                         # -----------------------------
                         usuario_data = {
                             "email": email,
@@ -94,6 +103,11 @@ if cliente_id:
                         supabase.table("usuarios").insert(usuario_data).execute()
                         st.success(f"✅ Usuario '{nombre_usuario}' creado correctamente en Auth y tabla interna.")
                         st.session_state["agregar_usuario"] = False  # Ocultar formulario
+
+                        # Refrescar la lista de usuarios
+                        usuarios_cliente = supabase.table("usuarios").select("*").eq("cliente_id", cliente_id).execute()
+                        st.dataframe(usuarios_cliente.data)
+
                     else:
                         st.error("❌ No se pudo crear el usuario en Supabase Auth.")
 
