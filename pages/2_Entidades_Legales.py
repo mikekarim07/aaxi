@@ -14,12 +14,12 @@ st.dataframe(entidades.data)
 st.subheader("Carga masiva de entidades")
 uploaded_file = st.file_uploader("Selecciona archivo Excel", type=["xlsx"])
 
-if uploaded_file:
-    df = load_excel(uploaded_file)
-    if df is not None:
-        st.dataframe(df.head())
-        if st.button("Cargar a base de datos"):
-            records = df.to_dict(orient="records")
-            supabase.table("entidades_legales").insert(records).execute()
-            st.success("Entidades cargadas correctamente ✅")
+# if uploaded_file:
+#     df = load_excel(uploaded_file)
+#     if df is not None:
+#         st.dataframe(df.head())
+#         if st.button("Cargar a base de datos"):
+#             records = df.to_dict(orient="records")
+#             supabase.table("entidades_legales").insert(records).execute()
+#             st.success("Entidades cargadas correctamente ✅")
 
