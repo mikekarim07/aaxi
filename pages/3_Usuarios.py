@@ -7,17 +7,17 @@ st.title("👤 Gestión de Usuarios")
 supabase = init_supabase()
 
 # Paso 1. Obtener lista de clientes
-clientes = supabase.table("clientes").select("id, nombre_cliente").execute()
+clientes = supabase.table("clientes").select("id, nombre").execute()
 clientes_data = clientes.data or []
 
 # Dropdown con placeholder
-cliente_nombres = ["Seleccionar Cliente"] + [c["nombre_cliente"] for c in clientes_data]
+cliente_nombres = ["Seleccionar Cliente"] + [c["nombre"] for c in clientes_data]
 cliente_seleccionado = st.selectbox("Selecciona un cliente", cliente_nombres)
 
 # Obtener el cliente_id
 cliente_id = None
 if cliente_seleccionado != "Seleccionar Cliente":
-    cliente = next((c for c in clientes_data if c["nombre_cliente"] == cliente_seleccionado), None)
+    cliente = next((c for c in clientes_data if c["nombre"] == cliente_seleccionado), None)
     if cliente:
         cliente_id = cliente["id"]
 
