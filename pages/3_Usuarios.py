@@ -39,13 +39,16 @@ if cliente_id:
     # -----------------------------
     # Paso 3: Botón para agregar usuario
     # -----------------------------
+    if "agregar_usuario" not in st.session_state:
+        st.session_state["agregar_usuario"] = False
+
     if st.button("Agregar usuario"):
         st.session_state["agregar_usuario"] = True
 
     # -----------------------------
     # Paso 4: Formulario de alta (solo si se presionó el botón)
     # -----------------------------
-    if st.session_state.get("agregar_usuario"):
+    if st.session_state["agregar_usuario"]:
         st.subheader("Formulario de creación de usuario")
 
         with st.form("crear_usuario_form"):
@@ -60,67 +63,39 @@ if cliente_id:
                 st.error("El nombre y el correo son obligatorios.")
             else:
                 try:
-                    # Validación 1: correo en tabla usuarios
-                    existing_user = supabase.table("usuarios").select("*").eq("email", email).execute()
-                    if existing_user.data:
-                        st.error("❌ Ya existe un usuario con este correo en la tabla interna.")
+                    # -----------------------------
+                    # Paso 4a: Crear usuario en Auth
+                    # -----------------------------
+                    auth_response = supabase.auth.admin.create_user(
+                        {
+                            "email": email,
+                            "email_confirm": True,
+                            "user_metadata": {
+                                "nombre_usuario": nombre_usuario,
+                                "rol": rol,
+                                "cliente_id": cliente_id,
+                            },
+                        }
+                    )
+                    auth_user = auth_response.user
+
+                    if auth_user:
+                        # -----------------------------
+                        # Paso 4b: Insertar en tabla usuarios
+                        # -----------------------------
+                        usuario_data = {
+                            "email": email,
+                            "nombre_usuario": nombre_usuario,
+                            "rol": rol,
+                            "estatus": estatus,
+                            "cliente_id": cliente_id,
+                            "auth_id": auth_user.id,
+                        }
+                        supabase.table("usuarios").insert(usuario_data).execute()
+                        st.success(f"✅ Usuario '{nombre_usuario}' creado correctamente en Auth y tabla interna.")
+                        st.session_state["agregar_usuario"] = False  # Ocultar formulario
                     else:
-                        # Validación 2: correo en Auth
-
-                        auth_users = supabase.auth.admin.list_users()  # ahora devuelve lista directamente
-                        if any(u.email == email for u in auth_users):
-                            st.error("❌ Ya existe un usuario con este correo en Supabase Auth.")
-                        else:
-                            # Crear usuario en Auth
-                            auth_response = supabase.auth.admin.create_user(
-                                {
-                                    "email": email,
-                                    "email_confirm": True,
-                                    "user_metadata": {
-                                        "nombre_usuario": nombre_usuario,
-                                        "rol": rol,
-                                        "cliente_id": cliente_id,
-                                    },
-                                }
-                            )
-                            auth_user = auth_response.user
-
-                        
-                        
-                        
-                        
-                        auth_users = supabase.auth.admin.list_users()  # devuelve una lista directamente
-                        if any(u.email == email for u in auth_users):  # no usamos .data
-                            st.error("❌ Ya existe un usuario con este correo en Supabase Auth.")
-                        else:
-                            # Crear usuario en Auth
-                            auth_response = supabase.auth.admin.create_user(
-                                {
-                                    "email": email,
-                                    "email_confirm": True,
-                                    "user_metadata": {
-                                        "nombre_usuario": nombre_usuario,
-                                        "rol": rol,
-                                        "cliente_id": cliente_id,
-                                    },
-                                }
-                            )
-                            auth_user = auth_response.user
-
-                            if auth_user:
-                                usuario_data = {
-                                    "email": email,
-                                    "nombre_usuario": nombre_usuario,
-                                    "rol": rol,
-                                    "estatus": estatus,
-                                    "cliente_id": cliente_id,
-                                    "auth_id": auth_user.id,
-                                }
-                                supabase.table("usuarios").insert(usuario_data).execute()
-                                st.success(f"✅ Usuario '{nombre_usuario}' creado exitosamente.")
-                                st.session_state["agregar_usuario"] = False  # Ocultar el formulario
-                            else:
-                                st.error("❌ No se pudo crear el usuario en Supabase Auth.")
+                        st.error("❌ No se pudo crear el usuario en Supabase Auth.")
 
                 except APIError as e:
                     st.error(f"Error en la base de datos: {e}")
